@@ -1,0 +1,5 @@
+pandas>=2.1
+numpy>=1.26
+biopython>=1.81
+scikit-learn>=1.4
+tqdm>=4.66

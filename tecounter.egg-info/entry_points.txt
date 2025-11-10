@@ -1,0 +1,2 @@
+[console_scripts]
+tecounter = tecounter.__main__:main

@@ -1,0 +1,165 @@
+Metadata-Version: 2.4
+Name: tecounter
+Version: 0.1.0
+Summary: LTR-focused TE counter and comparer
+Author-email: virodyn.contact@gmail.com
+License: MIT
+Project-URL: https://github.com/ViroDyn-Ltd/TEcounter-LTR
+Keywords: transposable elements,ltr,bioinformatics
+Classifier: Programming Language :: Python :: 3
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Requires-Python: >=3.11
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: pandas>=2.1
+Requires-Dist: numpy>=1.26
+Requires-Dist: biopython>=1.81
+Requires-Dist: scikit-learn>=1.4
+Requires-Dist: tqdm>=4.66
+Dynamic: license-file
+
+# TEcounter (LTR-specialized)
+
+TEcounter is a deterministic, text-only command-line workflow for summarising LTR retrotransposons from TEsorter outputs. It normalises mixed-order tables, applies LTR-specific domain and QC logic, clusters subfamilies via deterministic k-mer profiles, quantifies abundance (including optional chromosomal windows), and produces cross-sample comparisons. All outputs are plain text (TSV/CSV/JSONL selectable) plus FASTA representatives.
+
+## Quickstart
+
+```
+python -m tecounter \
+  --tesorter data/mock/sample.tesorter.tsv \
+  --fasta data/mock/TEcopies.fa \
+  --gff data/mock/annotations.gff3 \
+  --sample Athaliana \
+  --species Arabidopsis_thaliana \
+  --out out/Athaliana \
+  --cluster kmer --k 6 \
+  --ltrs-only true \
+  --filter-unknowns true --unknown-policy drop
+```
+
+To process a directory of samples (requires manifest columns `sample_id`, `species`):
+
+```
+python -m tecounter folder \
+  --in data/mock \
+  --manifest data/mock/manifest.tsv \
+  --out out/All \
+  --per-sample-out \
+  --filter-unknowns true --unknown-policy tag
+```
+
+Dump a specific artifact from a completed run:
+
+```
+tecounter dump --out out/Athaliana --what family_matrix
+```
+
+## Features
+
+- LTR-only processing by default with provenance counts for filtered non-LTR orders.
+- Tolerant TSV ingestion (column aliasing) and streaming-friendly FASTA access via Biopython indices.
+- LTR domain calls (`gag, PR, RT, RH, INT`) with intact/truncated logic and lightweight chimera detection.
+- Unknown-handling controls: `--filter-unknowns`, `--unknown-policy`, `--unknown-patterns`, `--min-evidence`.
+- Deterministic k-mer clustering (single-link, cosine distance) with bootstrap stability (50 replicates).
+- Abundance summaries, chromosome windows (when GFF provided), cross-sample matrices, pairwise log2FC/Jaccard.
+- Representative FASTA/index per family/subfamily (longest intact sequences, tagged with sample/basis).
+- Publish-ready bundle containing REQUIRED text artifacts plus `ALL.txt`, `README.txt`, `run.jsonl` metadata.
+
+## Project Layout
+
+```
+tecounter/           Python package (CLI + core modules)
+data/mock/           Small mixed-order mock dataset + manifest
+pyproject.toml       Build metadata and dependencies
+README.md            This guide
+LICENSE              MIT license
+```
+
+Network-free execution is supported. All randomness is deterministically seeded (`random.seed(1337)` + NumPy RNGs).
+
+## Command Reference
+
+### Single-sample mode
+
+```
+python -m tecounter \
+  --tesorter <path/to/sample.tesorter.tsv> \
+  --sample <sample_id> \
+  --species <Species_name> \
+  --out <output_folder> \
+  [--fasta sample.fa] [--gff sample.gff3] \
+  [--cluster {kmer,none}] [--k 6] \
+  [--ltrs-only true|false] \
+  [--filter-unknowns true|false --unknown-policy {drop,keep,tag}] \
+  [--unknown-patterns pattern1,pattern2,...] \
+  [--min-evidence 1]
+```
+
+Mandatory arguments are the TEsorter TSV, the sample ID, species name, and the destination folder. FASTA/GFF are optional; omit them when you only need per-copy tabular summaries. Set `--cluster none` for speed when you do not need subfamily calls.
+
+### Folder (multi-sample) mode
+
+```
+python -m tecounter folder \
+  --in <directory_with_tesorter_tsvs> \
+  --manifest <manifest.tsv> \
+  --out <bundle_folder> \
+  [--per-sample-out] \
+  [other flags as in single-sample mode]
+```
+
+The manifest must contain at least `sample_id` and `species` columns. File discovery is name driven: a row with `sample_id=SampleA` expects `<in>/SampleA.tesorter.tsv`. When `--per-sample-out` is present, each sample also gets its own bundle under `<out>/<sample_id>/` in addition to the combined cross-sample bundle.
+
+### Dump mode
+
+```
+python -m tecounter dump --out <bundle_dir> --what <artifact>
+```
+
+`--what` can be any of `normalized`, `domains`, `curated`, `subfamilies`, `family_summary`, `subfamily_summary`, `chr_windows`, `representatives_index`, `family_matrix`, `subfamily_matrix`, `pairwise`, or `all_txt`. The command streams the requested artifact to stdout, so you can redirect or pipe it as needed (e.g., `tecounter dump --out out/Run --what family_matrix > fam.tsv`).
+
+## Worked Example (daArcMinu1.1)
+
+To make validation reproducible, the repository includes `data/examples/daArcMinu1.1.tesorter.tsv` (copied from the full TEsorter output) plus a one-line manifest. The commands below use only the TSV (no FASTA/GFF) and disable subfamily clustering for speed:
+
+1. **Single sample**
+
+   ```
+   python -m tecounter \
+     --tesorter data/examples/daArcMinu1.1.tesorter.tsv \
+     --sample daArcMinu1.1 \
+     --species Unknown \
+     --out out/examples/daArc-single \
+     --cluster none \
+     --ltrs-only true \
+     --filter-unknowns true --unknown-policy drop
+   ```
+
+   Result: bundle under `out/examples/daArc-single/` with 57 446 retained LTR copies (47 309 Copia, 10 137 Gypsy). `ALL.txt` reports 152 671 total hits, 909 non-LTR filtered, and 95 225 “unknown” LTR rows dropped per policy.
+
+2. **Folder mode (single-row manifest)**
+
+   ```
+   python -m tecounter folder \
+     --in data/examples \
+     --manifest data/examples/manifest.tsv \
+     --out out/examples/daArc-folder \
+     --cluster none \
+     --ltrs-only true \
+     --filter-unknowns true --unknown-policy drop
+   ```
+
+   Produces a combined bundle at `out/examples/daArc-folder/` and, because only one row is in the manifest, replicates the single-sample outputs while adding empty cross-sample sections.
+
+3. **Dumping an artifact**
+
+   ```
+   python -m tecounter dump \
+     --out out/examples/daArc-folder \
+     --what family_matrix | head
+   ```
+
+   Streams the family abundance matrix (counts + bp%) for the sample. You can request any other artifact defined in the specification.
+
+These three commands exercise every CLI mode end-to-end on the same dataset. Use them as templates for new samples by substituting your own TEsorter TSVs, manifests, and output destinations.

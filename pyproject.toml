@@ -1,0 +1,34 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "tecounter"
+version = "0.1.0"
+description = "LTR-focused TE counter and comparer"
+authors = [{name = "Codex", email = "codex@example.com"}]
+license = {text = "MIT"}
+readme = "README.md"
+requires-python = ">=3.11"
+keywords = ["transposable elements", "ltr", "bioinformatics"]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
+]
+dependencies = [
+  "pandas>=2.1",
+  "numpy>=1.26",
+  "biopython>=1.81",
+  "scikit-learn>=1.4",
+  "tqdm>=4.66",
+]
+
+[project.urls]
+Homepage = "https://github.com/ViroDyn-Ltd/TEcounter-LTR"
+
+[project.scripts]
+tecounter = "tecounter.__main__:main"
+
+[tool.setuptools.packages.find]
+include = ["tecounter", "tecounter.*"]
