@@ -1,5 +1,7 @@
 # TEcounter (LTR-specialized)
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.17574578.svg)](https://doi.org/10.5281/zenodo.17574578)
+
 TEcounter is a deterministic, text-only command-line workflow for summarising LTR retrotransposons from TEsorter outputs. It normalises mixed-order tables, applies LTR-specific domain and QC logic, clusters subfamilies via deterministic k-mer profiles, quantifies abundance (including optional chromosomal windows), and produces cross-sample comparisons. All outputs are plain text (TSV/CSV/JSONL selectable) plus FASTA representatives.
 
 ## Quickstart
